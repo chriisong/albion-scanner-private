@@ -4,8 +4,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ao-data/albiondata-client/lib"
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/lib"
+	"github.com/chriisong/albion-scanner-private/log"
 	uuid "github.com/nu7hatch/gouuid"
 )
 

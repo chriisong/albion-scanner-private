@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ao-data/albiondata-client/client/photon"
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/client/photon"
+	"github.com/chriisong/albion-scanner-private/log"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"

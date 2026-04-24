@@ -1,6 +1,8 @@
 aead.dev/minisign v0.2.0/go.mod h1:zdq6LdSd9TbuSxchxwhpA9zEb9YXcVGoE8JakuiGaIQ=
 aead.dev/minisign v0.3.0 h1:8Xafzy5PEVZqYDNP60yJHARlW1eOQtsKNp/Ph2c0vRA=
 aead.dev/minisign v0.3.0/go.mod h1:NLvG3Uoq3skkRMDuc3YHpWUTMTrSExqm+Ij73W13F6Y=
+github.com/ao-data/albiondata-client v0.0.0-20260414235921-64dc935a6088 h1:vB4dq+LOPLxQyAHynPe1Yn6T0OtSl3rvZpRg8mSmRv4=
+github.com/ao-data/albiondata-client v0.0.0-20260414235921-64dc935a6088/go.mod h1:pTtt0RMCZYnNGm2t9guc/wOkxecrhaFCIVJuq0y5CJQ=
 github.com/ao-data/go-githubupdate v0.0.0-20260201170319-c56c2e714903 h1:mw6t0ka+ISQs8px7LExt3QBGXFtKbsqQ60yo/QRe1Xo=
 github.com/ao-data/go-githubupdate v0.0.0-20260201170319-c56c2e714903/go.mod h1:Mcot8ZMuAZEz9lQMEdS06DKWRmAt+6mGzMWkwbz/2+A=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=

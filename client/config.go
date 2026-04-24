@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/log"
 
 	"github.com/mattn/go-colorable"
 	"github.com/sirupsen/logrus"

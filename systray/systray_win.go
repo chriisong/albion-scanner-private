@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ao-data/albiondata-client/client"
+	"github.com/chriisong/albion-scanner-private/client"
 
-	"github.com/ao-data/albiondata-client/icon"
+	"github.com/chriisong/albion-scanner-private/icon"
 	"github.com/getlantern/systray"
 	"github.com/gonutz/w32"
 )

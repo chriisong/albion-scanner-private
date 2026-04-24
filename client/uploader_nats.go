@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/log"
 	nats "github.com/nats-io/go-nats"
 )
 

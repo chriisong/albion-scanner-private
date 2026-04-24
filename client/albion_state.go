@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/ao-data/albiondata-client/lib"
-	"github.com/ao-data/albiondata-client/log"
-	"github.com/ao-data/albiondata-client/notification"
+	"github.com/chriisong/albion-scanner-private/lib"
+	"github.com/chriisong/albion-scanner-private/log"
+	"github.com/chriisong/albion-scanner-private/notification"
 )
 
 // CacheSize limit size of messages in cache

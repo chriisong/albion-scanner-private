@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ao-data/albiondata-client/client"
-	"github.com/ao-data/albiondata-client/log"
-	"github.com/ao-data/albiondata-client/systray"
+	"github.com/chriisong/albion-scanner-private/client"
+	"github.com/chriisong/albion-scanner-private/log"
+	"github.com/chriisong/albion-scanner-private/systray"
 
 	"github.com/ao-data/go-githubupdate/updater"
 )

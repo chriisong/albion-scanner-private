@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/log"
 )
 
 var version string

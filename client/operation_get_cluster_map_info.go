@@ -1,10 +1,10 @@
 package client
 
 import (
-	"github.com/ao-data/albiondata-client/lib"
+	"github.com/chriisong/albion-scanner-private/lib"
 	"strconv"
 
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/log"
 	uuid "github.com/nu7hatch/gouuid"
 )
 

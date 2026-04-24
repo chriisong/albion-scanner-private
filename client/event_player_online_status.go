@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/ao-data/albiondata-client/lib"
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/lib"
+	"github.com/chriisong/albion-scanner-private/log"
 )
 
 type eventPlayerOnlineStatus struct {

@@ -1,6 +1,19 @@
 <!-- [![CircleCI](https://circleci.com/gh/broderickhyman/albiondata-client/tree/master.svg?style=svg)](https://circleci.com/gh/broderickhyman/albiondata-client/tree/master) [![Go Report Card](https://goreportcard.com/badge/github.com/broderickhyman/albiondata-client)](https://goreportcard.com/report/github.com/broderickhyman/albiondata-client)
 -->
 
+## Private Fork — albion-scanner-private
+
+This is a private fork of [ao-data/albiondata-client](https://github.com/ao-data/albiondata-client) maintained for personal use.
+
+**Divergences from upstream:**
+- Upload endpoint redirected to an internal Pi5 NATS broker (Tailscale-only); AODP public upload stripped.
+- Proof-of-Work (PoW) step skipped.
+- Trade-receipt decoder added: emits decoded buy/sell events to `albion.private.trade_receipts` on the private broker.
+
+**Maintenance:** Periodic upstream merges are expected. Do not publish or distribute this fork.
+
+---
+
 # Albion Data - Client
 Distributed client for the [Albion Online Data](https://www.albion-online-data.com/)
 project.

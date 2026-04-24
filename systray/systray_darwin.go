@@ -8,8 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/ao-data/albiondata-client/icon"
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/icon"
+	"github.com/chriisong/albion-scanner-private/log"
 	"github.com/getlantern/systray"
 )
 

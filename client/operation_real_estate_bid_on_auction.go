@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/ao-data/albiondata-client/log"
+	"github.com/chriisong/albion-scanner-private/log"
 )
 
 type operationRealEstateBidOnAuction struct {
