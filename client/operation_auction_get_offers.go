@@ -83,6 +83,10 @@ func (op operationAuctionGetOffersResponse) Process(state *albionState) {
 		return
 	}
 
+	// Cache the orders so AuctionBuyOffer requests can resolve orderId → full
+	// order (mirrors AFM's TradeService.AddMarketOrdersToCache).
+	state.cacheMarketOrders(orders)
+
 	upload := lib.MarketUpload{
 		Orders: orders,
 	}

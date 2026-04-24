@@ -51,6 +51,10 @@ func decodeRequest(params map[uint8]interface{}) (operation operation, err error
 		operation = &operationGetGameServerByCluster{}
 	case opAuctionGetOffers:
 		operation = &operationAuctionGetOffers{}
+	case opAuctionBuyOffer:
+		operation = &operationAuctionBuyOffer{}
+	case opAuctionSellSpecificItemRequest:
+		operation = &operationAuctionSellSpecificItemRequest{}
 	case opAuctionGetItemAverageStats:
 		operation = &operationAuctionGetItemAverageStats{}
 	case opGetClusterMapInfo:
@@ -89,7 +93,12 @@ func decodeResponse(params map[uint8]interface{}) (operation operation, err erro
 	case opAuctionGetRequests:
 		operation = &operationAuctionGetRequestsResponse{}
 	case opAuctionBuyOffer:
-		operation = &operationAuctionGetRequestsResponse{}
+		// NOTE: upstream previously mis-mapped this to
+		// operationAuctionGetRequestsResponse. In this fork the buy-offer
+		// response confirms a staged trade receipt (see operation_auction_buy_or_sell.go).
+		operation = &operationAuctionBuyOfferResponse{}
+	case opAuctionSellSpecificItemRequest:
+		operation = &operationAuctionSellSpecificItemRequestResponse{}
 	case opAuctionGetItemAverageStats:
 		operation = &operationAuctionGetItemAverageStatsResponse{}
 	case opGetMailInfos:

@@ -36,9 +36,14 @@ type albionState struct {
 	// The index is the message number (param255) % CacheSize
 	marketHistoryIDLookup [CacheSize]marketHistoryInfo
 	// TODO could this be improved?!
+
+	// Trade-receipt staging shared across dispatched Process goroutines.
+	// See operation_auction_buy_or_sell.go.
+	tradeCache   marketOrderCache
+	tradePending unconfirmedTradeSlot
 }
 
-func (state albionState) IsValidLocation() bool {
+func (state *albionState) IsValidLocation() bool {
 	var onlydigits = regexp.MustCompile(`^[0-9]+$`)
 
 	switch {
@@ -72,7 +77,7 @@ func (state albionState) IsValidLocation() bool {
 // call-site compatibility but is always empty in this fork — the private
 // scanner emits everything to ConfigGlobal.PrivateBrokerURL regardless of
 // region, so the per-region AODP ingest URLs were stripped.
-func (state albionState) GetServer() (int, string) {
+func (state *albionState) GetServer() (int, string) {
 	var serverID = 0
 
 	// if we happen to have a server id stored in state, lets re-default to that
