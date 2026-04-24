@@ -63,8 +63,7 @@ type config struct {
 	Offline                        bool
 	OfflinePath                    string
 	RecordPath                     string
-	PrivateIngestBaseUrls          string
-	PublicIngestBaseUrls           string
+	PrivateBrokerURL               string
 	NoCPULimit                     bool
 	PrintVersion                   bool
 	UpdateGithubOwner              string
@@ -84,16 +83,16 @@ func (config *config) SetupFlags() {
 
 	flag.Parse()
 
+	// Env var fallback: flag wins when both are set.
+	if config.PrivateBrokerURL == "" {
+		if env := os.Getenv("ALBION_PRIVATE_BROKER_URL"); env != "" {
+			config.PrivateBrokerURL = env
+		}
+	}
+
 	if config.OfflinePath != "" {
 		config.Offline = true
 		config.DisableUpload = true
-
-		if config.PublicIngestBaseUrls == "http+pow://west.aodp.local:3000" {
-			config.DisableUpload = false
-		}
-
-		log.Infof("config.PublicIngestBaseUrls: %v", config.PublicIngestBaseUrls)
-		log.Infof("config.DisableUpload: %v", config.DisableUpload)
 	}
 
 	if config.DisableUpload {
@@ -223,17 +222,10 @@ func (config *config) setupCommonFlags() {
 	)
 
 	flag.StringVar(
-		&config.PublicIngestBaseUrls,
-		"i",
-		"https+pow://albion-online-data.com",
-		"Base URL to send PUBLIC data to, can be 'nats://', 'http://', 'https://' or 'noop' and can have multiple uploaders. Comma separated.",
-	)
-
-	flag.StringVar(
-		&config.PrivateIngestBaseUrls,
-		"p",
+		&config.PrivateBrokerURL,
+		"broker",
 		"",
-		"Base URL to send PRIVATE data to, can be 'nats://', 'http://', 'https://' or 'noop' and can have multiple uploaders. Comma separated.",
+		"NATS broker URL for all uploads (e.g., nats://100.88.12.122:4222). Required unless -d is set. Overridable via ALBION_PRIVATE_BROKER_URL env var.",
 	)
 
 	flag.StringVar(

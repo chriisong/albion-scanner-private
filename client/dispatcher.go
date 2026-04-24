@@ -2,77 +2,86 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
-
 	"strings"
 
 	"github.com/chriisong/albion-scanner-private/lib"
 	"github.com/chriisong/albion-scanner-private/log"
 )
 
-type dispatcher struct{}
+type dispatcher struct {
+	brokerUploader uploader
+}
 
 var (
 	wsHub *WSHub
 	dis   *dispatcher
 )
 
-func createDispatcher() {
+// createDispatcher wires the package-level dispatcher with a single NATS broker
+// uploader built from ConfigGlobal.PrivateBrokerURL. Returns an error rather
+// than log.Fatal so the caller (Client.Run) can surface it through the normal
+// exit path. The scanner has exactly one upload destination: the private broker.
+func createDispatcher() error {
 	dis = &dispatcher{}
+
+	if !ConfigGlobal.DisableUpload {
+		u, err := newBrokerUploader(ConfigGlobal.PrivateBrokerURL)
+		if err != nil {
+			return fmt.Errorf("configure private broker: %w", err)
+		}
+		dis.brokerUploader = u
+	}
 
 	if ConfigGlobal.EnableWebsockets {
 		wsHub = newHub()
 		go wsHub.run()
 		go runHTTPServer()
 	}
+	return nil
 }
 
-func createUploaders(targets []string) []uploader {
-	var uploaders []uploader
-	for _, target := range targets {
-		if target == "" {
-			continue
-		}
-		if len(target) < 4 {
-			log.Infof("Got an ingest target that was less than 4 characters, not a valid ingest target: %v", target)
-			continue
-		}
-
-		if target[0:8] == "http+pow" ||  target[0:9] == "https+pow" {
-			uploaders = append(uploaders, newHTTPUploaderPow(target))
-		} else if target[0:4] == "http" || target[0:5] == "https" {
-			uploaders = append(uploaders, newHTTPUploader(target))
-		} else if target[0:4] == "nats" {
-			uploaders = append(uploaders, newNATSUploader(target))
-		} else {
-			log.Infof("An invalid ingest target was specified: %v", target)
-		}
+// validateBrokerURL enforces that the URL is a non-empty nats:// endpoint.
+// Split out from newBrokerUploader so scheme-validation tests don't need a
+// reachable NATS server.
+func validateBrokerURL(url string) error {
+	if url == "" {
+		return errors.New("PrivateBrokerURL is required; set -broker or ALBION_PRIVATE_BROKER_URL")
 	}
+	if !strings.HasPrefix(url, "nats://") {
+		return fmt.Errorf("PrivateBrokerURL must use nats:// scheme (got %q); HTTP/PoW paths are removed in this fork", url)
+	}
+	return nil
+}
 
-	return uploaders
+// newBrokerUploader validates the URL and opens a NATS connection. Fails
+// loudly when the URL is missing, uses a non-nats scheme, or the broker is
+// unreachable at startup — the fork never falls back to public AODP.
+func newBrokerUploader(url string) (uploader, error) {
+	if err := validateBrokerURL(url); err != nil {
+		return nil, err
+	}
+	return newNATSUploader(url)
 }
 
 func sendMsgToPublicUploaders(upload interface{}, topic string, state *albionState, identifier string) {
+	if ConfigGlobal.DisableUpload {
+		log.Info("Upload is disabled.")
+		return
+	}
+
 	data, err := json.Marshal(upload)
 	if err != nil {
 		log.Errorf("Error while marshalling payload for %v: %v", err, topic)
 		return
 	}
 
-	var PublicIngestBaseUrls = ConfigGlobal.PublicIngestBaseUrls
-	// http+pow://albion-online-data.com is used as a magic placeholder for every realm there is
-	if strings.Contains(ConfigGlobal.PublicIngestBaseUrls, "https+pow://albion-online-data.com") {
-		// we replace the placeholder with the correct one based on the serverID from albionState
-		PublicIngestBaseUrls = strings.Replace(PublicIngestBaseUrls, "https+pow://albion-online-data.com", state.AODataIngestBaseURL, -1)
+	if dis != nil && dis.brokerUploader != nil {
+		dis.brokerUploader.sendToIngest(data, topic, state, identifier)
 	}
 
-	var publicUploaders = createUploaders(strings.Split(PublicIngestBaseUrls, ","))
-	var privateUploaders = createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
-
-	sendMsgToUploaders(data, topic, publicUploaders, state, identifier)
-	sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
-
-	// If websockets are enabled, send the data there too
 	if ConfigGlobal.EnableWebsockets {
 		sendMsgToWebSockets(data, topic)
 	}
@@ -100,25 +109,12 @@ func sendMsgToPrivateUploaders(upload lib.PersonalizedUpload, topic string, stat
 		return
 	}
 
-	var privateUploaders = createUploaders(strings.Split(ConfigGlobal.PrivateIngestBaseUrls, ","))
-	if len(privateUploaders) > 0 {
-		sendMsgToUploaders(data, topic, privateUploaders, state, identifier)
+	if dis != nil && dis.brokerUploader != nil {
+		dis.brokerUploader.sendToIngest(data, topic, state, identifier)
 	}
 
-	// If websockets are enabled, send the data there too
 	if ConfigGlobal.EnableWebsockets {
 		sendMsgToWebSockets(data, topic)
-	}
-}
-
-func sendMsgToUploaders(msg []byte, topic string, uploaders []uploader, state *albionState, identifier string) {
-	if ConfigGlobal.DisableUpload {
-		log.Info("Upload is disabled.")
-		return
-	}
-
-	for _, u := range uploaders {
-		u.sendToIngest(msg, topic, state, identifier)
 	}
 }
 

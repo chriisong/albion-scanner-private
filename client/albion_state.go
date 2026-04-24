@@ -66,44 +66,35 @@ func (state albionState) IsValidLocation() bool {
 	}
 }
 
+// GetServer identifies the regional game server from the source IP and
+// returns its integer server ID (1=west, 2=east, 3=europe, 0=unknown).
+// The second return value (legacy AODataIngestBaseURL) is preserved for
+// call-site compatibility but is always empty in this fork — the private
+// scanner emits everything to ConfigGlobal.PrivateBrokerURL regardless of
+// region, so the per-region AODP ingest URLs were stripped.
 func (state albionState) GetServer() (int, string) {
-	// default to 0
 	var serverID = 0
-	var AODataIngestBaseURL = ""
 
 	// if we happen to have a server id stored in state, lets re-default to that
 	if state.AODataServerID != 0 {
 		serverID = state.AODataServerID
 	}
-	if state.AODataIngestBaseURL != "" {
-		AODataIngestBaseURL = state.AODataIngestBaseURL
-	}
 
-	// we get packets from other than game servers, so determine if it's a game server
-	// based on soruce ip and if its east/west servers
 	var isAlbionIP = false
 	if strings.HasPrefix(state.GameServerIP, "5.188.125.") {
-		// west server class c ip range
 		serverID = 1
 		isAlbionIP = true
-		AODataIngestBaseURL = "https+pow://pow.west.albion-online-data.com"
 	} else if strings.HasPrefix(state.GameServerIP, "5.45.187.") {
-		// east server class c ip range
-		isAlbionIP = true
 		serverID = 2
-		AODataIngestBaseURL = "https+pow://pow.east.albion-online-data.com"
-	} else if strings.HasPrefix(state.GameServerIP, "193.169.238.") {
-		// eu server class c ip range
 		isAlbionIP = true
+	} else if strings.HasPrefix(state.GameServerIP, "193.169.238.") {
 		serverID = 3
-		AODataIngestBaseURL = "https+pow://pow.europe.albion-online-data.com"
+		isAlbionIP = true
 	}
 
-	// if this was a known albion online server ip, then let's log it
 	if isAlbionIP {
 		log.Tracef("Returning Server ID %v (ip src: %v)", serverID, state.GameServerIP)
-		log.Tracef("Returning AODataIngestBaseURL %v (ip src: %v)", AODataIngestBaseURL, state.GameServerIP)
 	}
 
-	return serverID, AODataIngestBaseURL
+	return serverID, ""
 }

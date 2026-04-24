@@ -28,7 +28,9 @@ func (client *Client) Run() error {
 	ConfigGlobal.setupDebugEvents()
 	ConfigGlobal.setupDebugOperations()
 
-	createDispatcher()
+	if err := createDispatcher(); err != nil {
+		return err
+	}
 
 	if ConfigGlobal.Offline {
 		processOffline(ConfigGlobal.OfflinePath)
