@@ -331,3 +331,137 @@ func TestTradeReceiptSubject_MatchesPythonContract(t *testing.T) {
 		t.Errorf("subject drift: Python parser binds to this exact string, got %q", TradeReceiptSubject)
 	}
 }
+
+// --- opcode 88 (Black Market sell) ------------------------------------------
+//
+// Parameter layout was verified empirically — not inherited from AFM.
+// See operation_auction_buy_or_sell.go:operationAuctionSellRequest docstring
+// for the live-capture evidence.
+
+func TestDecodeRequest_AuctionSellRequest_BMOpcode88_ReturnsTypedStruct(t *testing.T) {
+	params := map[uint8]interface{}{
+		253: uint16(88),
+		0:   int32(921),         // itemTypeId (informational; not on struct)
+		1:   uint64(21035309500),
+		2:   int32(1),
+	}
+	op, err := decodeRequest(params)
+	if err != nil {
+		t.Fatalf("decodeRequest error: %v", err)
+	}
+	typed, ok := op.(*operationAuctionSellRequest)
+	if !ok {
+		t.Fatalf("expected *operationAuctionSellRequest, got %T", op)
+	}
+	if typed.OrderID != 21035309500 {
+		t.Errorf("OrderID: want 21035309500, got %d", typed.OrderID)
+	}
+	if typed.Amount != 1 {
+		t.Errorf("Amount: want 1, got %d", typed.Amount)
+	}
+}
+
+func TestDecodeResponse_AuctionSellRequest_BMOpcode88_ReturnsResponseStruct(t *testing.T) {
+	params := map[uint8]interface{}{253: uint16(88), 254: int16(0)}
+	op, err := decodeResponse(params)
+	if err != nil {
+		t.Fatalf("decodeResponse error: %v", err)
+	}
+	typed, ok := op.(*operationAuctionSellRequestResponse)
+	if !ok {
+		t.Fatalf("expected *operationAuctionSellRequestResponse, got %T", op)
+	}
+	if typed.ReturnCode != 0 {
+		t.Errorf("ReturnCode: want 0 (decoded from params[254]), got %d", typed.ReturnCode)
+	}
+}
+
+func TestBMSellRequest_StagesFromCacheWithSellDirection(t *testing.T) {
+	state := &albionState{}
+	state.cacheMarketOrders([]*lib.MarketOrder{
+		{
+			ID: 21035309500, ItemID: "T7_HEAD_PLATE_SET2",
+			QualityLevel: 1, EnchantmentLevel: 0,
+			Price: 505600000, LocationID: "3003", AuctionType: "request",
+		},
+	})
+	(&operationAuctionSellRequest{OrderID: 21035309500, Amount: 1}).Process(state)
+
+	staged, ok := state.takeUnconfirmedTrade()
+	if !ok {
+		t.Fatal("expected a staged trade after BM sell request")
+	}
+	if staged.Direction != "sell" {
+		t.Errorf("direction: want sell, got %q", staged.Direction)
+	}
+	if staged.ItemID != "T7_HEAD_PLATE_SET2" {
+		t.Errorf("item_id: want T7_HEAD_PLATE_SET2, got %q", staged.ItemID)
+	}
+	if staged.LocationID != 3003 {
+		t.Errorf("location_id: want 3003 (BM), got %d", staged.LocationID)
+	}
+	if staged.UnitPrice != 50560 { // 505600000 / 10000 per Task 8 scale
+		t.Errorf("unit_price: want 50560 silver (after /10000), got %d", staged.UnitPrice)
+	}
+}
+
+func TestBMSellResponse_SuccessRC_PublishesReceipt(t *testing.T) {
+	fake := &fakeUploader{}
+	withTestDispatcher(t, fake, false, false)
+
+	state := &albionState{}
+	state.cacheMarketOrders([]*lib.MarketOrder{
+		{ID: 7, ItemID: "T5_ARMOR_PLATE_UNDEAD", QualityLevel: 2, Price: 244900000, LocationID: "3003", AuctionType: "request"},
+	})
+	(&operationAuctionSellRequest{OrderID: 7, Amount: 1}).Process(state)
+	(&operationAuctionSellRequestResponse{ReturnCode: 0}).Process(state)
+
+	calls := fake.snapshot()
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 broker call on rc=0, got %d", len(calls))
+	}
+	if calls[0].topic != TradeReceiptSubject {
+		t.Errorf("topic: want %q, got %q", TradeReceiptSubject, calls[0].topic)
+	}
+	var payload map[string]interface{}
+	if err := json.Unmarshal(calls[0].body, &payload); err != nil {
+		t.Fatalf("body not valid JSON: %v", err)
+	}
+	if payload["direction"] != "sell" {
+		t.Errorf("direction: want sell, got %v", payload["direction"])
+	}
+	if payload["item_id"] != "T5_ARMOR_PLATE_UNDEAD" {
+		t.Errorf("item_id: want T5_ARMOR_PLATE_UNDEAD, got %v", payload["item_id"])
+	}
+}
+
+func TestBMSellResponse_FailureRC3526_DiscardsStagedTrade(t *testing.T) {
+	fake := &fakeUploader{}
+	withTestDispatcher(t, fake, false, false)
+
+	state := &albionState{}
+	state.cacheMarketOrders([]*lib.MarketOrder{
+		{ID: 9, ItemID: "T5_ORE", QualityLevel: 1, Price: 100000, LocationID: "3003", AuctionType: "request"},
+	})
+	(&operationAuctionSellRequest{OrderID: 9, Amount: 1}).Process(state)
+	// rc=3526 is the stale-order failure observed in live captures — BM NPC
+	// order filled by another player before our transaction landed.
+	(&operationAuctionSellRequestResponse{ReturnCode: 3526}).Process(state)
+
+	if calls := fake.snapshot(); len(calls) != 0 {
+		t.Errorf("expected 0 broker calls when rc != 0, got %d", len(calls))
+	}
+	// Pending slot should have been drained so a subsequent success response
+	// doesn't mistakenly publish the discarded trade.
+	if _, ok := state.takeUnconfirmedTrade(); ok {
+		t.Error("expected pending trade slot to be empty after failure-rc discard")
+	}
+}
+
+func TestBMSellRequest_CacheMissDoesNotStage(t *testing.T) {
+	state := &albionState{} // empty cache
+	(&operationAuctionSellRequest{OrderID: 999_999, Amount: 1}).Process(state)
+	if _, ok := state.takeUnconfirmedTrade(); ok {
+		t.Error("expected no staged trade on cache miss")
+	}
+}

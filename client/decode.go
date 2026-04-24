@@ -53,6 +53,12 @@ func decodeRequest(params map[uint8]interface{}) (operation operation, err error
 		operation = &operationAuctionGetOffers{}
 	case opAuctionBuyOffer:
 		operation = &operationAuctionBuyOffer{}
+	case opAuctionSellRequest:
+		// Opcode 88 — Black Market sell (NPC fills player's sell).
+		// AFM does NOT decode this opcode; parameter layout was verified
+		// empirically from live captures 2026-04-24. See Task 9 debug log
+		// in private-scan-pipeline tracker.
+		operation = &operationAuctionSellRequest{}
 	case opAuctionSellSpecificItemRequest:
 		operation = &operationAuctionSellSpecificItemRequest{}
 	case opAuctionGetItemAverageStats:
@@ -97,6 +103,12 @@ func decodeResponse(params map[uint8]interface{}) (operation operation, err erro
 		// operationAuctionGetRequestsResponse. In this fork the buy-offer
 		// response confirms a staged trade receipt (see operation_auction_buy_or_sell.go).
 		operation = &operationAuctionBuyOfferResponse{}
+	case opAuctionSellRequest:
+		// Paired response for opcode 88 (BM sell). Unlike the always-success
+		// AFM pattern, this handler inspects params[254]=returnCode and
+		// discards the staged trade on non-zero rc (BM orders frequently
+		// race-lose to other players — observed rc=3526 on stale orderIds).
+		operation = &operationAuctionSellRequestResponse{}
 	case opAuctionSellSpecificItemRequest:
 		operation = &operationAuctionSellSpecificItemRequestResponse{}
 	case opAuctionGetItemAverageStats:

@@ -77,6 +77,49 @@ func (op *operationAuctionSellSpecificItemRequestResponse) Process(state *albion
 	confirmUnconfirmedTrade(state)
 }
 
+// operationAuctionSellRequest captures a Black Market sell (opcode 88).
+//
+// This path is NOT modeled by AFM. Parameter layout was verified empirically
+// from live captures on 2026-04-24 across four consecutive sells (three failed
+// with rc=3526 on stale order IDs, one succeeded); indices are stable and
+// match the flow: the player clicks Sell on a BM NPC's buy-request, the
+// client sends {itemTypeId, orderId, amount} to the server, the server
+// acknowledges success or fails with a non-zero rc if another player filled
+// the targeted order first.
+//
+// Parameter index map (verified):
+//   - [0] itemTypeId — numeric item index (unused by the trade-receipt path;
+//     item_id TEXT is resolved from the cached NPC order below)
+//   - [1] orderId    — uint64, the NPC buy-request being filled
+//   - [2] amount     — int, units being sold
+type operationAuctionSellRequest struct {
+	OrderID uint64 `mapstructure:"1"`
+	Amount  int    `mapstructure:"2"`
+}
+
+func (op *operationAuctionSellRequest) Process(state *albionState) {
+	log.Debugf("AuctionSellRequest (BM): amount=%d orderId=%d", op.Amount, op.OrderID)
+	stageUnconfirmedTrade(state, op.OrderID, op.Amount, "sell")
+}
+
+// operationAuctionSellRequestResponse confirms the BM sell only when the
+// server returns a zero rc. BM NPC orders churn fast; rc=3526 is the observed
+// stale-order failure. Confirming eagerly would publish bogus receipts for
+// every attempt. The rc is injected into params[254] by listener.onResponse.
+type operationAuctionSellRequestResponse struct {
+	ReturnCode int16 `mapstructure:"254"`
+}
+
+func (op *operationAuctionSellRequestResponse) Process(state *albionState) {
+	if op.ReturnCode != 0 {
+		log.Debugf("AuctionSellRequest (BM) failed rc=%d; discarding staged trade", op.ReturnCode)
+		_, _ = state.takeUnconfirmedTrade()
+		return
+	}
+	log.Debug("AuctionSellRequest (BM) success; confirming trade")
+	confirmUnconfirmedTrade(state)
+}
+
 // stageUnconfirmedTrade resolves the cached MarketOrder and stages a trade
 // receipt for publication on the paired response. A cache miss is logged and
 // skipped — matches AFM's silent behavior when GetMarketOrderFromCache returns

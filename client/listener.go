@@ -209,6 +209,13 @@ func (l *listener) onResponse(opCode byte, returnCode int16, _ string, params ma
 		params[253] = uint16(opCode)
 	}
 
+	// Photon reserves param 254 for the operation ReturnCode, but the wire
+	// format keeps it in the response header, not the params map. Inject it
+	// so response decoders can branch on rc via `mapstructure:"254"` (e.g.
+	// the BM-sell decoder in operation_auction_buy_or_sell.go discards its
+	// staged trade on rc != 0). Mirrors the precedent set by params[253].
+	params[254] = returnCode
+
 	// Market order data arrives as params[0]=[]string (set by dispatchResponse in parser).
 	if _, ok := params[0].([]string); ok {
 		params[253] = uint16(opAuctionGetOffers)
